@@ -1,5 +1,6 @@
 # Parcel
-# Paste your API token from your webstore dashboard.
+# Paste your Parcel API token from https://sqware.gg/dashboard-store.
+# Server owners must list their server on https://sqware.gg first.
 api-token: ""
 
 # Set to true to log delivery attempts to the server console.

@@ -2,9 +2,11 @@
 
 [![Build](https://github.com/sqware-gg/Parcel/actions/workflows/build.yml/badge.svg)](https://github.com/sqware-gg/Parcel/actions/workflows/build.yml)
 
-Parcel is a Minecraft webstore delivery plugin for Bukkit, Spigot, and Paper servers. It polls a compatible webstore delivery API, runs paid package commands from the server console, queues online-only deliveries, and confirms successful delivery back to the store.
+Parcel is the Minecraft webstore delivery plugin for servers using SQWARE commerce. It polls the SQWARE delivery API, runs paid package commands from the server console, queues online-only deliveries, and confirms successful delivery back to your store.
 
 Use it when you need reliable Minecraft donation store deliveries, rank purchases, crate key commands, currency packages, or other paid server rewards without exposing inbound ports on your Minecraft server.
+
+Server owners list their server on `sqware.gg`, configure packages from the SQWARE dashboard store page, and connect Stripe Connect to receive payouts.
 
 ## Links
 
@@ -27,7 +29,9 @@ Parcel is designed for broad server compatibility, including older production ne
 
 ## Why Server Owners Use It
 
+- Sell ranks, keys, currency, cosmetics, or other server packages from a hosted store page.
 - Deliver webstore purchases with console commands.
+- Receive payouts through Stripe Connect after commerce is configured.
 - Keep the Minecraft server outbound-only; no port forwarding or embedded web server.
 - Queue packages until the player joins when needed.
 - Avoid duplicate delivery with order idempotency.
@@ -46,13 +50,26 @@ Parcel is designed for broad server compatibility, including older production ne
 - Idempotency checks to avoid duplicate command execution.
 - Local confirmation retry storage when the delivery API cannot be reached.
 
+## SQWARE Store Setup
+
+Before installing Parcel on your Minecraft server:
+
+1. List your Minecraft server at https://sqware.gg.
+2. Open the SQWARE dashboard store page at https://sqware.gg/dashboard-store.
+3. Configure your store details, packages, prices, and delivery commands.
+4. Connect Stripe Connect from the dashboard so your store can receive payouts.
+5. Create or copy the Parcel API token for your server.
+6. Install Parcel on the Minecraft server and paste that token into `plugins/Parcel/config.yml`.
+
+Delivery commands are configured in the dashboard and executed by the Minecraft server console when Parcel receives a paid order.
+
 ## Installation
 
 1. Download the latest jar from the GitHub Releases page.
 2. Stop your Minecraft server.
 3. Put the jar in the server `plugins` folder.
 4. Start the server once to generate `plugins/Parcel/config.yml`.
-5. Copy your Parcel API token from your webstore dashboard.
+5. Copy your Parcel API token from the SQWARE dashboard store page.
 6. Paste it into `api-token`.
 7. Run `/parcel reload` or restart the server.
 
@@ -66,11 +83,11 @@ debug: false
 join-delivery-delay-seconds: 2
 ```
 
-- `api-token`: token from your webstore dashboard.
+- `api-token`: token from the SQWARE dashboard store page.
 - `debug`: logs extra delivery details to the console.
 - `join-delivery-delay-seconds`: delay before queued online-only deliveries run after a player joins.
 
-The API host is intentionally fixed so deliveries always use the expected service endpoint.
+The API host is intentionally fixed so deliveries always use the SQWARE delivery endpoint.
 
 ## Commands
 
@@ -126,7 +143,7 @@ target/parcel.jar
 ## Troubleshooting
 
 - `API token is not set`: add the token to `plugins/Parcel/config.yml`, then run `/parcel reload`.
-- `API token is not allowed to use Parcel`: regenerate or reissue the token from your webstore dashboard.
+- `API token is not allowed to use Parcel`: regenerate or reissue the token from the SQWARE dashboard store page.
 - Delivery API route unavailable: the server reached the service endpoint, but the API route was not available. Check service status or ask support.
 - Deliveries wait forever: confirm the player name or UUID in the order and check online-only package settings.
 - Commands fail: test the exact command in console and verify placeholders are valid for your package.
