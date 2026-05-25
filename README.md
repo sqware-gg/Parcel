@@ -11,6 +11,10 @@ Use it when you need reliable Minecraft donation store deliveries, rank purchase
 - Website: https://sqware.gg
 - Support and plugin updates: https://discord.sqware.gg
 
+## Screenshots
+
+Screenshot capture guidance is available in [docs/screenshots](docs/screenshots/README.md).
+
 ## Compatibility
 
 - Server software: Bukkit, Spigot, or Paper
@@ -104,6 +108,8 @@ Parcel sends only the data needed to poll and confirm deliveries, such as plugin
 ## Updating
 
 Stop the server, replace the jar, and start the server again. Keep `plugins/Parcel/config.yml` and the local delivery state files.
+
+Release history is tracked in [CHANGELOG.md](CHANGELOG.md).
 
 ## Build From Source
 

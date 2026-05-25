@@ -1,7 +1,7 @@
 name: Parcel
 version: '${project.version}'
 main: com.sqware.parcel.ParcelPlugin
-description: Minecraft webstore delivery plugin for SQWARE
+description: Minecraft webstore delivery plugin for Bukkit, Spigot, and Paper servers.
 author: SQWARE / Conflict
 website: https://sqware.gg
 commands:

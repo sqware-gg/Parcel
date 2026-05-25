@@ -31,7 +31,7 @@ final class SQWAREApiClient {
     SQWAREApiClient(ConnectConfig config, String pluginVersion) {
         this.config = config;
         this.pluginVersion = pluginVersion;
-        this.userAgent = "Parcel/" + pluginVersion + " (SQWARE)";
+        this.userAgent = "Parcel/" + pluginVersion + " (Minecraft Webstore Delivery)";
     }
 
     void sendHeartbeat(HeartbeatPayload payload) throws ApiException {
@@ -120,7 +120,7 @@ final class SQWAREApiClient {
                     : readBody(connection, statusCode);
             return new HttpResponse(statusCode, responseBody, statusMessage, retryAfter);
         } catch (IOException e) {
-            throw new ApiException("could not reach the SQWARE API: " + e.getMessage(), e);
+            throw new ApiException("could not reach the delivery API: " + e.getMessage(), e);
         } finally {
             if (connection != null) {
                 connection.disconnect();
@@ -161,11 +161,11 @@ final class SQWAREApiClient {
         String body = response.body() == null ? "" : response.body().trim();
         String apiError = extractApiError(body);
         if (status == 401) {
-            throw new ApiException(operation + " was rejected by SQWARE: invalid or revoked API token"
+            throw new ApiException(operation + " was rejected by the delivery API: invalid or revoked API token"
                     + suffix(apiError));
         }
         if (status == 403) {
-            throw new ApiException(operation + " was rejected by SQWARE: API token is not allowed to use Parcel"
+            throw new ApiException(operation + " was rejected by the delivery API: API token is not allowed to use Parcel"
                     + suffix(apiError));
         }
         if (status == 404 && looksLikeHtml(body)) {
@@ -227,18 +227,18 @@ final class SQWAREApiClient {
     private String formatServerSideFailure(HttpResponse response, String apiError) {
         int status = response.statusCode();
         StringBuilder message = new StringBuilder()
-                .append("SQWARE API returned ")
+                .append("Delivery API returned ")
                 .append(formatHttpStatus(status, response.statusMessage()))
                 .append(".");
 
         if (!isBlank(apiError)) {
-            message.append(" SQWARE said: ").append(apiError).append(".");
+            message.append(" API said: ").append(apiError).append(".");
         } else if (status == 503) {
-            message.append(" The SQWARE backend is temporarily unavailable or under maintenance.");
+            message.append(" The delivery backend is temporarily unavailable or under maintenance.");
         } else if (status == 502 || status == 504) {
-            message.append(" SQWARE did not get a healthy response from its upstream service.");
+            message.append(" The delivery backend did not get a healthy response from its upstream service.");
         } else {
-            message.append(" SQWARE encountered a temporary server-side problem.");
+            message.append(" The delivery backend encountered a temporary server-side problem.");
         }
 
         if (!isBlank(response.retryAfter())) {

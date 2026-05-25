@@ -10,7 +10,7 @@
     <packaging>jar</packaging>
 
     <name>Parcel</name>
-    <description>Minecraft webstore delivery plugin for SQWARE</description>
+    <description>Minecraft webstore delivery plugin for Bukkit, Spigot, and Paper servers.</description>
 
     <properties>
         <java.release>8</java.release>

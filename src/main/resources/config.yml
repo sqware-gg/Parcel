@@ -1,5 +1,5 @@
 # Parcel
-# Paste your API token from the SQWARE dashboard (Store > Parcel)
+# Paste your API token from your webstore dashboard.
 api-token: ""
 
 # Set to true to log delivery attempts to the server console.

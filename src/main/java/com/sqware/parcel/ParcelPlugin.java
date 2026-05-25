@@ -378,7 +378,7 @@ public class ParcelPlugin extends JavaPlugin implements Listener {
                     + " is online.");
         } catch (IOException e) {
             getLogger().severe("Could not persist queued delivery for order " + delivery.orderId()
-                    + ". Parcel will wait for SQWARE to send it again: " + e.getMessage());
+                    + ". Parcel will wait for the delivery service to send it again: " + e.getMessage());
         }
     }
 
