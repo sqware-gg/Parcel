@@ -8,14 +8,12 @@ Use it when you need reliable Minecraft donation store deliveries, rank purchase
 
 Server owners list their server on `sqware.gg`, configure packages from the SQWARE dashboard store page, and connect Stripe Connect to receive payouts.
 
+![SQWARE dashboard store page showing packages, revenue, delivery status, Stripe Connect payouts, support links, and Parcel in-game delivery setup.](dashboard-store.png)
+
 ## Links
 
 - Website: https://sqware.gg
 - Support and plugin updates: https://discord.sqware.gg
-
-## Screenshots
-
-Screenshot capture guidance is available in [docs/screenshots](docs/screenshots/README.md).
 
 ## Compatibility
 
