@@ -146,6 +146,12 @@ target/parcel.jar
 - Deliveries wait forever: confirm the player name or UUID in the order and check online-only package settings.
 - Commands fail: test the exact command in console and verify placeholders are valid for your package.
 
+## License
+
+Parcel is licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
+
+This license applies to the Parcel plugin source in this repository. SQWARE hosted services, dashboard, APIs, trademarks, and commercial terms are separate from this repository.
+
 ## Support
 
 For setup help, compatibility questions, and plugin updates, use https://discord.sqware.gg.

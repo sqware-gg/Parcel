@@ -12,6 +12,14 @@
     <name>Parcel</name>
     <description>Minecraft webstore delivery plugin for SQWARE stores.</description>
 
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
     <properties>
         <java.release>8</java.release>
         <spigot.api.version>1.8.8-R0.1-SNAPSHOT</spigot.api.version>
