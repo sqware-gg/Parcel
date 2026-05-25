@@ -2,14 +2,14 @@
 
 [![Build](https://github.com/sqware-gg/Parcel/actions/workflows/build.yml/badge.svg)](https://github.com/sqware-gg/Parcel/actions/workflows/build.yml)
 
-Parcel is the Minecraft webstore delivery plugin for SQWARE. It connects a Bukkit, Spigot, or Paper server to SQWARE, polls for paid package deliveries, runs configured console commands, and confirms the result back to SQWARE.
+Parcel is a Minecraft webstore delivery plugin for Bukkit, Spigot, and Paper servers. It polls a compatible webstore delivery API, runs paid package commands from the server console, queues online-only deliveries, and confirms successful delivery back to the store.
 
-It is intentionally narrow: Parcel delivers purchases. It does not open inbound ports, expose a web server, stream logs, manage files, or control server lifecycle.
+Use it when you need reliable Minecraft donation store deliveries, rank purchases, crate key commands, currency packages, or other paid server rewards without exposing inbound ports on your Minecraft server.
 
 ## Links
 
 - Website: https://sqware.gg
-- Plugin information and support: https://discord.sqware.gg
+- Support and plugin updates: https://discord.sqware.gg
 
 ## Compatibility
 
@@ -21,6 +21,15 @@ It is intentionally narrow: Parcel delivers purchases. It does not open inbound 
 
 Parcel is designed for broad server compatibility, including older production networks.
 
+## Why Server Owners Use It
+
+- Deliver webstore purchases with console commands.
+- Keep the Minecraft server outbound-only; no port forwarding or embedded web server.
+- Queue packages until the player joins when needed.
+- Avoid duplicate delivery with order idempotency.
+- Retry confirmations after temporary network or API issues.
+- Keep delivery state on disk so restarts are safe.
+
 ## Features
 
 - Outbound-only connection to `https://sqware.gg`.
@@ -28,18 +37,18 @@ Parcel is designed for broad server compatibility, including older production ne
 - Automatic heartbeat with server software, version, player count, and delivery state.
 - Delivery polling every 15 seconds.
 - Console command execution through `Bukkit.dispatchCommand`.
-- Durable queueing for deliveries that must wait until the player is online.
+- Durable queueing for deliveries that require the player to be online.
 - `{player}` and `{uuid}` placeholder replacement.
 - Idempotency checks to avoid duplicate command execution.
-- Local confirmation retry storage when the SQWARE API cannot be reached.
+- Local confirmation retry storage when the delivery API cannot be reached.
 
 ## Installation
 
-1. Download the latest Parcel jar from GitHub Releases.
+1. Download the latest jar from the GitHub Releases page.
 2. Stop your Minecraft server.
-3. Put the jar in your server `plugins` folder.
+3. Put the jar in the server `plugins` folder.
 4. Start the server once to generate `plugins/Parcel/config.yml`.
-5. Copy your Parcel API token from the SQWARE dashboard.
+5. Copy your Parcel API token from your webstore dashboard.
 6. Paste it into `api-token`.
 7. Run `/parcel reload` or restart the server.
 
@@ -53,11 +62,11 @@ debug: false
 join-delivery-delay-seconds: 2
 ```
 
-- `api-token`: token from the SQWARE dashboard.
+- `api-token`: token from your webstore dashboard.
 - `debug`: logs extra delivery details to the console.
 - `join-delivery-delay-seconds`: delay before queued online-only deliveries run after a player joins.
 
-The API host is intentionally not configurable by server owners. Parcel always connects to `https://sqware.gg`.
+The API host is intentionally fixed so deliveries always use the expected service endpoint.
 
 ## Commands
 
@@ -75,9 +84,9 @@ parcel.admin  - use Parcel status, reload, and poll commands, default op
 
 ## Delivery Safety
 
-Parcel treats the SQWARE order ID as an idempotency key. If the same order is seen more than once, commands are not re-run after the delivery has already been processed.
+Parcel treats the order ID as an idempotency key. If the same order is seen more than once, commands are not re-run after the delivery has already been processed.
 
-If commands execute but SQWARE cannot be reached for confirmation, Parcel saves the confirmation locally and retries. This prevents paid deliveries from becoming uncertain during temporary network or API problems.
+If commands execute but the delivery API cannot be reached for confirmation, Parcel saves the confirmation locally and retries. This prevents paid deliveries from becoming uncertain during temporary network or API problems.
 
 Local state files:
 
@@ -111,11 +120,11 @@ target/parcel.jar
 ## Troubleshooting
 
 - `API token is not set`: add the token to `plugins/Parcel/config.yml`, then run `/parcel reload`.
-- `API token is not allowed to use Parcel`: regenerate or reissue the token in the SQWARE dashboard.
-- `Parcel API route not deployed or routed to the website`: the request reached `sqware.gg`, but the API route was not available. Check SQWARE service status or ask support.
+- `API token is not allowed to use Parcel`: regenerate or reissue the token from your webstore dashboard.
+- Delivery API route unavailable: the server reached the service endpoint, but the API route was not available. Check service status or ask support.
 - Deliveries wait forever: confirm the player name or UUID in the order and check online-only package settings.
 - Commands fail: test the exact command in console and verify placeholders are valid for your package.
 
 ## Support
 
-For setup help, compatibility questions, and plugin information, use https://discord.sqware.gg.
+For setup help, compatibility questions, and plugin updates, use https://discord.sqware.gg.
