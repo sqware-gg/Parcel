@@ -1,0 +1,10 @@
+# Parcel
+# Paste your API token from the SQWARE dashboard (Store > Parcel)
+api-token: ""
+
+# Set to true to log delivery attempts to the server console.
+debug: false
+
+# When a delivery needs the player online, Parcel queues it locally and
+# executes it this many seconds after the player joins.
+join-delivery-delay-seconds: 2
