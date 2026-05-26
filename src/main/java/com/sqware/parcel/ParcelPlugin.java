@@ -1,6 +1,10 @@
 package com.sqware.parcel;
 
+import com.sqware.parcel.event.ParcelDeliveryExecutedEvent;
+import com.sqware.parcel.event.ParcelDeliveryQueuedEvent;
+import org.bstats.bukkit.Metrics;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -33,6 +37,7 @@ public class ParcelPlugin extends JavaPlugin implements Listener {
     private static final String ADMIN_PERMISSION = "parcel.admin";
     private static final String PENDING_CONFIRMATIONS_FILE = "pending-confirmations.json";
     private static final String QUEUED_DELIVERIES_FILE = "queued-deliveries.json";
+    private static final int BSTATS_PLUGIN_ID = 31598;
     private static final long INITIAL_POLL_DELAY_TICKS = 20L;
     private static final int CONFIRMATION_RETRIES = 3;
     private static final int MAX_RENDERED_COMMAND_LENGTH = 4_096;
@@ -40,6 +45,7 @@ public class ParcelPlugin extends JavaPlugin implements Listener {
     private static final Pattern UUID_PATTERN = Pattern.compile(
             "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
     );
+    private static final String CHAT_PREFIX = "&bParcel &8› &7";
 
     private final Set<String> inFlightOrders = Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
     private final Map<String, Boolean> warnedOperations = new ConcurrentHashMap<>();
@@ -63,6 +69,7 @@ public class ParcelPlugin extends JavaPlugin implements Listener {
 
     @Override
     public void onEnable() {
+        new Metrics(this, BSTATS_PLUGIN_ID);
         saveDefaultConfig();
         pendingConfirmations = new PendingConfirmationStore(getDataFolder().toPath().resolve(PENDING_CONFIRMATIONS_FILE));
         queuedDeliveries = new QueuedDeliveryStore(getDataFolder().toPath().resolve(QUEUED_DELIVERIES_FILE));
@@ -95,7 +102,7 @@ public class ParcelPlugin extends JavaPlugin implements Listener {
         }
 
         if (!hasAdminPermission(sender)) {
-            sender.sendMessage("You do not have permission to manage Parcel.");
+            message(sender, "&cNo permission.");
             return true;
         }
 
@@ -107,9 +114,9 @@ public class ParcelPlugin extends JavaPlugin implements Listener {
         if (args[0].equalsIgnoreCase("reload")) {
             reloadConfig();
             boolean running = reloadRuntime();
-            sender.sendMessage(running
-                    ? "Parcel reloaded and polling is active."
-                    : "Parcel reloaded, but polling is not active. Check config.yml and console logs.");
+            message(sender, running
+                    ? "&aParcel reloaded. &7Polling is active."
+                    : "&eParcel reloaded. &7Polling is inactive.");
             return true;
         }
 
@@ -118,7 +125,7 @@ public class ParcelPlugin extends JavaPlugin implements Listener {
             return true;
         }
 
-        sender.sendMessage("Usage: /" + label + " <status|reload|poll>");
+        message(sender, "Usage: &b/" + label + " <status|reload|poll>");
         return true;
     }
 
@@ -195,11 +202,11 @@ public class ParcelPlugin extends JavaPlugin implements Listener {
     private void runManualPoll(CommandSender sender) {
         ConnectConfig activeConfig = config;
         if (activeConfig == null || !activeConfig.hasApiToken() || apiClient == null) {
-            sender.sendMessage("Parcel cannot poll yet. Add an API token to config.yml, then run /parcel reload.");
+            message(sender, "&cParcel cannot poll yet. &7Add an API token, then run &b/parcel reload&7.");
             return;
         }
 
-        sender.sendMessage("Parcel poll queued.");
+        message(sender, "&aParcel poll queued.");
         getServer().getScheduler().runTaskAsynchronously(this, this::runPollCycle);
     }
 
@@ -356,6 +363,15 @@ public class ParcelPlugin extends JavaPlugin implements Listener {
             }
         }
 
+        getServer().getPluginManager().callEvent(new ParcelDeliveryExecutedEvent(
+                delivery.orderId(),
+                delivery.playerName(),
+                delivery.playerUuid(),
+                fromQueuedStore,
+                confirmation.ok(),
+                confirmation.error()
+        ));
+
         getServer().getScheduler().runTaskAsynchronously(this, () -> {
             if (confirmWithRetries(confirmation)) {
                 try {
@@ -376,6 +392,11 @@ public class ParcelPlugin extends JavaPlugin implements Listener {
             queuedDeliveries.put(QueuedDelivery.create(delivery));
             getLogger().info("Queued order " + delivery.orderId() + " until " + describePlayer(delivery)
                     + " is online.");
+            getServer().getPluginManager().callEvent(new ParcelDeliveryQueuedEvent(
+                    delivery.orderId(),
+                    delivery.playerName(),
+                    delivery.playerUuid()
+            ));
         } catch (IOException e) {
             getLogger().severe("Could not persist queued delivery for order " + delivery.orderId()
                     + ". Parcel will wait for the delivery service to send it again: " + e.getMessage());
@@ -664,24 +685,28 @@ public class ParcelPlugin extends JavaPlugin implements Listener {
 
     private void sendStatus(CommandSender sender) {
         ConnectConfig activeConfig = config;
-        sender.sendMessage("Parcel status:");
-        sender.sendMessage("API URL: " + (activeConfig == null ? "invalid config" : activeConfig.apiUri()));
-        sender.sendMessage("Polling: " + (pollTask != null ? "active" : "inactive"));
-        sender.sendMessage("Players: " + lastOnlinePlayerCount + "/" + lastMaxPlayers);
-        sender.sendMessage("Pending confirmations: " + pendingConfirmations.size());
-        sender.sendMessage("Queued join deliveries: " + queuedDeliveries.size());
-        sender.sendMessage("In-flight deliveries: " + inFlightOrders.size());
-        sender.sendMessage("Join delivery delay: " + (activeConfig == null
+        message(sender, "&bParcel status");
+        message(sender, "API URL: &f" + (activeConfig == null ? "invalid config" : activeConfig.apiUri()));
+        message(sender, "Polling: &f" + (pollTask != null ? "active" : "inactive"));
+        message(sender, "Players: &f" + lastOnlinePlayerCount + "&8/&f" + lastMaxPlayers);
+        message(sender, "Pending confirmations: &f" + pendingConfirmations.size());
+        message(sender, "Queued join deliveries: &f" + queuedDeliveries.size());
+        message(sender, "In-flight deliveries: &f" + inFlightOrders.size());
+        message(sender, "Join delivery delay: &f" + (activeConfig == null
                 ? "invalid config"
                 : activeConfig.joinDeliveryDelaySeconds() + " seconds"));
-        sender.sendMessage("Last queue size: " + lastQueueSize);
-        sender.sendMessage("Last heartbeat: " + formatInstant(lastSuccessfulHeartbeat));
-        sender.sendMessage("Last queue poll: " + formatInstant(lastSuccessfulQueuePoll));
-        sender.sendMessage("Last confirmation: " + formatInstant(lastSuccessfulConfirmation));
+        message(sender, "Last queue size: &f" + lastQueueSize);
+        message(sender, "Last heartbeat: &f" + formatInstant(lastSuccessfulHeartbeat));
+        message(sender, "Last queue poll: &f" + formatInstant(lastSuccessfulQueuePoll));
+        message(sender, "Last confirmation: &f" + formatInstant(lastSuccessfulConfirmation));
         if (lastFailureOperation != null) {
-            sender.sendMessage("Last failure: " + lastFailureOperation + " "
+            message(sender, "&cLast failure: &f" + lastFailureOperation + " "
                     + formatInstant(lastFailureAt) + " (" + lastFailureMessage + ")");
         }
+    }
+
+    private void message(CommandSender sender, String message) {
+        sender.sendMessage(ChatColor.translateAlternateColorCodes('&', CHAT_PREFIX + message));
     }
 
     private String formatInstant(Instant instant) {

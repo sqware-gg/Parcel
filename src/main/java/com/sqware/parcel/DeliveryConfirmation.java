@@ -23,6 +23,10 @@ final class DeliveryConfirmation {
         return ok;
     }
 
+    String error() {
+        return error;
+    }
+
     JsonObject toJson() {
         JsonObject json = new JsonObject();
         json.addProperty("orderId", orderId);
