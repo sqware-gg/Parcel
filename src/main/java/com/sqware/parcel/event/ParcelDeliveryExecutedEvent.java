@@ -9,15 +9,27 @@ public final class ParcelDeliveryExecutedEvent extends Event {
     private final String orderId;
     private final String playerName;
     private final String playerUuid;
+    private final String deliveryType;
+    private final String subscriptionId;
+    private final String subscriptionEvent;
     private final boolean queued;
     private final boolean success;
     private final String error;
 
     public ParcelDeliveryExecutedEvent(String orderId, String playerName, String playerUuid,
                                        boolean queued, boolean success, String error) {
+        this(orderId, playerName, playerUuid, "", "", "", queued, success, error);
+    }
+
+    public ParcelDeliveryExecutedEvent(String orderId, String playerName, String playerUuid,
+                                       String deliveryType, String subscriptionId, String subscriptionEvent,
+                                       boolean queued, boolean success, String error) {
         this.orderId = orderId == null ? "" : orderId;
         this.playerName = playerName == null ? "" : playerName;
         this.playerUuid = playerUuid == null ? "" : playerUuid;
+        this.deliveryType = deliveryType == null ? "" : deliveryType;
+        this.subscriptionId = subscriptionId == null ? "" : subscriptionId;
+        this.subscriptionEvent = subscriptionEvent == null ? "" : subscriptionEvent;
         this.queued = queued;
         this.success = success;
         this.error = error == null ? "" : error;
@@ -33,6 +45,18 @@ public final class ParcelDeliveryExecutedEvent extends Event {
 
     public String playerUuid() {
         return playerUuid;
+    }
+
+    public String deliveryType() {
+        return deliveryType;
+    }
+
+    public String subscriptionId() {
+        return subscriptionId;
+    }
+
+    public String subscriptionEvent() {
+        return subscriptionEvent;
     }
 
     public boolean queued() {

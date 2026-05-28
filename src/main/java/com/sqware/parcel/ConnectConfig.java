@@ -14,15 +14,18 @@ final class ConnectConfig {
     private final String apiToken;
     private final boolean debug;
     private final int joinDeliveryDelaySeconds;
+    private final DeliveryIdentityMode deliveryIdentityMode;
 
     private ConnectConfig(
             String apiToken,
             boolean debug,
-            int joinDeliveryDelaySeconds
+            int joinDeliveryDelaySeconds,
+            DeliveryIdentityMode deliveryIdentityMode
     ) {
         this.apiToken = apiToken;
         this.debug = debug;
         this.joinDeliveryDelaySeconds = joinDeliveryDelaySeconds;
+        this.deliveryIdentityMode = deliveryIdentityMode;
     }
 
     static ConnectConfig from(FileConfiguration config) {
@@ -37,7 +40,8 @@ final class ConnectConfig {
         return new ConnectConfig(
                 apiToken,
                 config.getBoolean("debug", false),
-                joinDeliveryDelaySeconds
+                joinDeliveryDelaySeconds,
+                DeliveryIdentityMode.fromConfig(config.getString("delivery-identity", "uuid"))
         );
     }
 
@@ -59,6 +63,10 @@ final class ConnectConfig {
 
     int joinDeliveryDelaySeconds() {
         return joinDeliveryDelaySeconds;
+    }
+
+    DeliveryIdentityMode deliveryIdentityMode() {
+        return deliveryIdentityMode;
     }
 
     boolean hasApiToken() {

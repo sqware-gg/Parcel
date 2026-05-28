@@ -44,6 +44,9 @@ final class SQWAREApiClient {
         json.addProperty("bukkitVersion", payload.bukkitVersion());
         json.addProperty("serverPort", payload.serverPort());
         json.addProperty("onlineMode", payload.onlineMode());
+        json.addProperty("identityMode", payload.deliveryIdentityMode());
+        json.addProperty("deliveryIdentityMode", payload.deliveryIdentityMode());
+        json.addProperty("serverIdentityMode", payload.serverIdentityMode());
         json.addProperty("onlinePlayerCount", payload.onlinePlayerCount());
         json.addProperty("maxPlayers", payload.maxPlayers());
         json.addProperty("pendingConfirmations", payload.pendingConfirmations());

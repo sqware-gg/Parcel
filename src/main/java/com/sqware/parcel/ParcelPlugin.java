@@ -7,6 +7,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -14,6 +15,7 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 
+import java.io.File;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
@@ -66,6 +68,7 @@ public class ParcelPlugin extends JavaPlugin implements Listener {
     private volatile int lastOnlinePlayerCount;
     private volatile int lastMaxPlayers;
     private volatile int lastQueueSize;
+    private volatile String lastServerIdentityMode = "unknown";
 
     @Override
     public void onEnable() {
@@ -299,6 +302,8 @@ public class ParcelPlugin extends JavaPlugin implements Listener {
                     safeString(getServer().getBukkitVersion()),
                     getServer().getPort(),
                     getServer().getOnlineMode(),
+                    detectServerIdentityMode(),
+                    deliveryIdentityModeValue(config),
                     onlinePlayerCount,
                     maxPlayers,
                     pendingConfirmations.size(),
@@ -365,8 +370,11 @@ public class ParcelPlugin extends JavaPlugin implements Listener {
 
         getServer().getPluginManager().callEvent(new ParcelDeliveryExecutedEvent(
                 delivery.orderId(),
-                delivery.playerName(),
-                delivery.playerUuid(),
+                deliveredPlayerName(delivery, confirmation),
+                deliveredPlayerUuid(delivery, confirmation),
+                delivery.deliveryType(),
+                delivery.subscriptionId(),
+                delivery.subscriptionEvent(),
                 fromQueuedStore,
                 confirmation.ok(),
                 confirmation.error()
@@ -395,7 +403,10 @@ public class ParcelPlugin extends JavaPlugin implements Listener {
             getServer().getPluginManager().callEvent(new ParcelDeliveryQueuedEvent(
                     delivery.orderId(),
                     delivery.playerName(),
-                    delivery.playerUuid()
+                    delivery.playerUuid(),
+                    delivery.deliveryType(),
+                    delivery.subscriptionId(),
+                    delivery.subscriptionEvent()
             ));
         } catch (IOException e) {
             getLogger().severe("Could not persist queued delivery for order " + delivery.orderId()
@@ -448,26 +459,30 @@ public class ParcelPlugin extends JavaPlugin implements Listener {
     }
 
     private DeliveryConfirmation runDeliveryCommands(DeliveryCommand delivery) {
+        DeliveryIdentity identity = resolveDeliveryIdentity(delivery);
         if (delivery.commands().isEmpty()) {
-            return new DeliveryConfirmation(delivery.orderId(), false, "No commands were supplied for this delivery.");
+            return confirmation(delivery, identity, false, "No commands were supplied for this delivery.");
         }
 
-        String validationError = validateDelivery(delivery);
+        String validationError = validateDelivery(delivery, identity);
         if (validationError != null) {
-            return new DeliveryConfirmation(delivery.orderId(), false, validationError);
+            return confirmation(delivery, identity, false, validationError);
         }
 
         for (int index = 0; index < delivery.commands().size(); index++) {
             String command = delivery.commands().get(index);
-            String parsedCommand = renderCommand(command, delivery);
+            String parsedCommand = renderCommand(command, identity);
             if (isBlank(parsedCommand)) {
-                return new DeliveryConfirmation(delivery.orderId(), false, "Command " + (index + 1) + " was blank after parsing.");
+                return confirmation(delivery, identity, false,
+                        "Command " + (index + 1) + " was blank after parsing.");
             }
             if (parsedCommand.length() > MAX_RENDERED_COMMAND_LENGTH) {
-                return new DeliveryConfirmation(delivery.orderId(), false, "Command " + (index + 1) + " exceeded the maximum allowed length.");
+                return confirmation(delivery, identity, false,
+                        "Command " + (index + 1) + " exceeded the maximum allowed length.");
             }
             if (containsControlCharacter(parsedCommand)) {
-                return new DeliveryConfirmation(delivery.orderId(), false, "Command " + (index + 1) + " contained an invalid control character.");
+                return confirmation(delivery, identity, false,
+                        "Command " + (index + 1) + " contained an invalid control character.");
             }
 
             if (config != null && config.debug()) {
@@ -478,55 +493,79 @@ public class ParcelPlugin extends JavaPlugin implements Listener {
             try {
                 boolean success = Bukkit.dispatchCommand(Bukkit.getConsoleSender(), parsedCommand);
                 if (!success) {
-                    return new DeliveryConfirmation(
-                            delivery.orderId(),
-                            false,
-                            "Command " + (index + 1) + " returned false."
-                    );
+                    return confirmation(delivery, identity, false, "Command " + (index + 1) + " returned false.");
                 }
             } catch (RuntimeException e) {
-                return new DeliveryConfirmation(
-                        delivery.orderId(),
-                        false,
-                        "Command " + (index + 1) + " failed: " + safeString(e.getMessage())
-                );
+                return confirmation(delivery, identity, false,
+                        "Command " + (index + 1) + " failed: " + safeString(e.getMessage()));
             }
         }
 
-        return new DeliveryConfirmation(delivery.orderId(), true, null);
+        return confirmation(delivery, identity, true, null);
     }
 
-    private String validateDelivery(DeliveryCommand delivery) {
+    private DeliveryConfirmation confirmation(DeliveryCommand delivery, DeliveryIdentity identity, boolean ok, String error) {
+        return new DeliveryConfirmation(
+                delivery.orderId(),
+                ok,
+                error,
+                identity.live() ? identity.playerName() : "",
+                identity.live() ? identity.playerUuid() : "",
+                delivery.deliveryType(),
+                delivery.subscriptionId(),
+                delivery.subscriptionEvent()
+        );
+    }
+
+    private String deliveredPlayerName(DeliveryCommand delivery, DeliveryConfirmation confirmation) {
+        return isBlank(confirmation.playerName()) ? delivery.playerName() : confirmation.playerName();
+    }
+
+    private String deliveredPlayerUuid(DeliveryCommand delivery, DeliveryConfirmation confirmation) {
+        return isBlank(confirmation.playerUuid()) ? delivery.playerUuid() : confirmation.playerUuid();
+    }
+
+    private String validateDelivery(DeliveryCommand delivery, DeliveryIdentity identity) {
+        boolean nameIdentityMode = isNameDeliveryIdentityMode();
         boolean needsPlayerName = false;
         boolean needsPlayerUuid = false;
         for (String command : delivery.commands()) {
             needsPlayerName = needsPlayerName || command.contains("{player}");
-            needsPlayerUuid = needsPlayerUuid || command.contains("{uuid}");
+            needsPlayerUuid = needsPlayerUuid || command.contains("{uuid}") || command.contains("{playerUuid}");
         }
 
-        if (delivery.requiresOnline() && isBlank(delivery.playerName()) && isBlank(delivery.playerUuid())) {
-            return "Delivery required the player to be online, but no player identity was supplied.";
+        if (delivery.requiresOnline() && !isTargetPlayerOnline(delivery)) {
+            if (isBlank(delivery.playerName()) && isBlank(delivery.playerUuid())) {
+                return "Delivery required the player to be online, but no player identity was supplied.";
+            }
+            return "Delivery required the player to be online, but the target player was not online.";
         }
-        if (needsPlayerName && !PLAYER_NAME_PATTERN.matcher(delivery.playerName()).matches()) {
+        if (nameIdentityMode && delivery.requiresOnline() && !identity.live()) {
+            return "Delivery required the player to be online, but the target player was not online.";
+        }
+        if (needsPlayerName && !PLAYER_NAME_PATTERN.matcher(identity.playerName()).matches()) {
             return "Delivery required a valid Minecraft player name.";
         }
-        if (needsPlayerUuid && !UUID_PATTERN.matcher(delivery.playerUuid()).matches()) {
+        if (needsPlayerUuid && !UUID_PATTERN.matcher(identity.playerUuid()).matches()) {
             return "Delivery required a valid player UUID.";
         }
-        if (!isBlank(delivery.playerName()) && !PLAYER_NAME_PATTERN.matcher(delivery.playerName()).matches()) {
+        if (!identity.live() && !isBlank(delivery.playerName())
+                && !PLAYER_NAME_PATTERN.matcher(delivery.playerName()).matches()) {
             return "Delivery contained an invalid Minecraft player name.";
         }
-        if (!isBlank(delivery.playerUuid()) && !UUID_PATTERN.matcher(delivery.playerUuid()).matches()) {
+        if (!nameIdentityMode && !isBlank(delivery.playerUuid())
+                && !UUID_PATTERN.matcher(delivery.playerUuid()).matches()) {
             return "Delivery contained an invalid player UUID.";
         }
 
         return null;
     }
 
-    private String renderCommand(String command, DeliveryCommand delivery) {
+    private String renderCommand(String command, DeliveryIdentity identity) {
         String parsed = command
-                .replace("{player}", delivery.playerName())
-                .replace("{uuid}", delivery.playerUuid())
+                .replace("{player}", identity.playerName())
+                .replace("{playerUuid}", identity.playerUuid())
+                .replace("{uuid}", identity.playerUuid())
                 .trim();
         while (parsed.startsWith("/")) {
             parsed = parsed.substring(1).trim();
@@ -622,7 +661,30 @@ public class ParcelPlugin extends JavaPlugin implements Listener {
         return findOnlinePlayer(delivery) != null;
     }
 
+    private boolean isNameDeliveryIdentityMode() {
+        ConnectConfig activeConfig = config;
+        return activeConfig != null && activeConfig.deliveryIdentityMode() == DeliveryIdentityMode.NAME;
+    }
+
+    private String deliveryIdentityModeValue(ConnectConfig activeConfig) {
+        return activeConfig == null ? "unknown" : activeConfig.deliveryIdentityMode().configValue();
+    }
+
+    private DeliveryIdentity resolveDeliveryIdentity(DeliveryCommand delivery) {
+        if (isNameDeliveryIdentityMode()) {
+            Player player = findOnlinePlayer(delivery);
+            if (player != null) {
+                return DeliveryIdentity.live(player.getName(), player.getUniqueId().toString());
+            }
+        }
+        return DeliveryIdentity.requested(delivery.playerName(), delivery.playerUuid());
+    }
+
     private Player findOnlinePlayer(DeliveryCommand delivery) {
+        if (isNameDeliveryIdentityMode()) {
+            return findOnlinePlayerByExactName(delivery.playerName());
+        }
+
         UUID playerUuid = parseUuid(delivery.playerUuid());
         if (playerUuid != null) {
             Player player = getServer().getPlayer(playerUuid);
@@ -644,7 +706,25 @@ public class ParcelPlugin extends JavaPlugin implements Listener {
         return null;
     }
 
+    private Player findOnlinePlayerByExactName(String playerName) {
+        if (isBlank(playerName)) {
+            return null;
+        }
+        for (Player player : getServer().getOnlinePlayers()) {
+            if (player.getName().equals(playerName)) {
+                return player;
+            }
+        }
+        return null;
+    }
+
     private boolean targetsPlayer(DeliveryCommand delivery, UUID playerUuid, String playerName) {
+        if (isNameDeliveryIdentityMode()) {
+            return !isBlank(delivery.playerName())
+                    && !isBlank(playerName)
+                    && delivery.playerName().equals(playerName);
+        }
+
         UUID deliveryUuid = parseUuid(delivery.playerUuid());
         if (deliveryUuid != null && playerUuid != null && deliveryUuid.equals(playerUuid)) {
             return true;
@@ -675,6 +755,44 @@ public class ParcelPlugin extends JavaPlugin implements Listener {
         return "the target player";
     }
 
+    private String detectServerIdentityMode() {
+        if (getServer().getOnlineMode()) {
+            lastServerIdentityMode = "online";
+            return lastServerIdentityMode;
+        }
+        if (isProxyForwardingEnabled()) {
+            lastServerIdentityMode = "proxy";
+            return lastServerIdentityMode;
+        }
+        lastServerIdentityMode = "offline";
+        return lastServerIdentityMode;
+    }
+
+    private boolean isProxyForwardingEnabled() {
+        File serverDirectory = serverDirectory();
+        return booleanConfigValue(new File(serverDirectory, "spigot.yml"), "settings.bungeecord")
+                || booleanConfigValue(new File(serverDirectory, "paper.yml"), "settings.velocity-support.enabled")
+                || booleanConfigValue(new File(new File(serverDirectory, "config"), "paper-global.yml"),
+                "proxies.velocity.enabled")
+                || booleanConfigValue(new File(new File(serverDirectory, "config"), "paper-global.yml"),
+                "proxies.bungee-cord.online-mode");
+    }
+
+    private File serverDirectory() {
+        File pluginsDirectory = getDataFolder().getParentFile();
+        if (pluginsDirectory == null || pluginsDirectory.getParentFile() == null) {
+            return new File(".");
+        }
+        return pluginsDirectory.getParentFile();
+    }
+
+    private boolean booleanConfigValue(File file, String path) {
+        if (file == null || !file.isFile()) {
+            return false;
+        }
+        return YamlConfiguration.loadConfiguration(file).getBoolean(path, false);
+    }
+
     private void sleepBeforeRetry(int attempt) {
         try {
             Thread.sleep(Math.min(1_000L, 250L * attempt));
@@ -689,6 +807,8 @@ public class ParcelPlugin extends JavaPlugin implements Listener {
         message(sender, "API URL: &f" + (activeConfig == null ? "invalid config" : activeConfig.apiUri()));
         message(sender, "Polling: &f" + (pollTask != null ? "active" : "inactive"));
         message(sender, "Players: &f" + lastOnlinePlayerCount + "&8/&f" + lastMaxPlayers);
+        message(sender, "Delivery identity: &f" + deliveryIdentityModeValue(activeConfig));
+        message(sender, "Server identity: &f" + lastServerIdentityMode);
         message(sender, "Pending confirmations: &f" + pendingConfirmations.size());
         message(sender, "Queued join deliveries: &f" + queuedDeliveries.size());
         message(sender, "In-flight deliveries: &f" + inFlightOrders.size());
@@ -798,5 +918,37 @@ public class ParcelPlugin extends JavaPlugin implements Listener {
             }
         }
         return false;
+    }
+
+    private static final class DeliveryIdentity {
+        private final String playerName;
+        private final String playerUuid;
+        private final boolean live;
+
+        private DeliveryIdentity(String playerName, String playerUuid, boolean live) {
+            this.playerName = playerName == null ? "" : playerName;
+            this.playerUuid = playerUuid == null ? "" : playerUuid;
+            this.live = live;
+        }
+
+        private static DeliveryIdentity live(String playerName, String playerUuid) {
+            return new DeliveryIdentity(playerName, playerUuid, true);
+        }
+
+        private static DeliveryIdentity requested(String playerName, String playerUuid) {
+            return new DeliveryIdentity(playerName, playerUuid, false);
+        }
+
+        private String playerName() {
+            return playerName;
+        }
+
+        private String playerUuid() {
+            return playerUuid;
+        }
+
+        private boolean live() {
+            return live;
+        }
     }
 }

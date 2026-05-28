@@ -10,3 +10,11 @@ debug: false
 # When a delivery needs the player online, Parcel queues it locally and
 # executes it this many seconds after the player joins.
 join-delivery-delay-seconds: 2
+
+# How Parcel resolves player identity for online deliveries.
+# uuid: use the queued UUID first, then the queued name. This is the default
+#       and preserves the regular online-mode setup.
+# name: ignore the queued UUID for matching, wait for a player whose in-game
+#       name matches playerName, then render UUID placeholders from that live
+#       server player. Use this for offline-mode/proxy/Geyser setups.
+delivery-identity: uuid

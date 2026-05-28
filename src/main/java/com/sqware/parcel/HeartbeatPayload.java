@@ -9,6 +9,8 @@ final class HeartbeatPayload {
     private final String bukkitVersion;
     private final int serverPort;
     private final boolean onlineMode;
+    private final String serverIdentityMode;
+    private final String deliveryIdentityMode;
     private final int onlinePlayerCount;
     private final int maxPlayers;
     private final int pendingConfirmations;
@@ -23,6 +25,8 @@ final class HeartbeatPayload {
             String bukkitVersion,
             int serverPort,
             boolean onlineMode,
+            String serverIdentityMode,
+            String deliveryIdentityMode,
             int onlinePlayerCount,
             int maxPlayers,
             int pendingConfirmations,
@@ -36,6 +40,8 @@ final class HeartbeatPayload {
         this.bukkitVersion = bukkitVersion;
         this.serverPort = serverPort;
         this.onlineMode = onlineMode;
+        this.serverIdentityMode = serverIdentityMode;
+        this.deliveryIdentityMode = deliveryIdentityMode;
         this.onlinePlayerCount = onlinePlayerCount;
         this.maxPlayers = maxPlayers;
         this.pendingConfirmations = pendingConfirmations;
@@ -72,6 +78,14 @@ final class HeartbeatPayload {
 
     boolean onlineMode() {
         return onlineMode;
+    }
+
+    String serverIdentityMode() {
+        return serverIdentityMode;
+    }
+
+    String deliveryIdentityMode() {
+        return deliveryIdentityMode;
     }
 
     int onlinePlayerCount() {
