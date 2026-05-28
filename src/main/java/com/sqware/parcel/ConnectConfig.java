@@ -5,7 +5,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 import java.net.URI;
 
 final class ConnectConfig {
-    private static final URI SQWARE_API_URI = URI.create("https://sqware.gg");
+    private static final URI SQWARE_API_URI = URI.create("https://api.sqware.gg");
     private static final int POLL_INTERVAL_SECONDS = 15;
     private static final int MAX_TOKEN_LENGTH = 2_048;
     private static final int DEFAULT_JOIN_DELIVERY_DELAY_SECONDS = 2;

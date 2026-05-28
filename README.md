@@ -38,7 +38,7 @@ Parcel is designed for broad server compatibility, including older production ne
 
 ## Features
 
-- Outbound-only connection to `https://sqware.gg`.
+- Outbound-only connection to `https://api.sqware.gg`.
 - Bearer token authentication from `plugins/Parcel/config.yml`.
 - Automatic heartbeat with server software, version, player count, and delivery state.
 - Delivery polling every 15 seconds.
