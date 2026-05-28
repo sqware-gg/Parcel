@@ -2,7 +2,7 @@
 
 [![Build](https://github.com/sqware-gg/Parcel/actions/workflows/build.yml/badge.svg)](https://github.com/sqware-gg/Parcel/actions/workflows/build.yml)
 
-**Get the plugin jar, setup help, and updates in the SQWARE Discord: [discord.sqware.gg](https://discord.sqware.gg).**
+**Join the SQWARE Discord: [discord.sqware.gg](https://discord.sqware.gg).**
 
 Parcel is the Minecraft webstore delivery plugin for SQWARE stores. It polls the SQWARE delivery API, runs paid package commands from the server console, queues online-only deliveries, and confirms successful delivery back to your store.
 
