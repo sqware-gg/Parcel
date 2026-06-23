@@ -34,6 +34,8 @@ import java.util.regex.Pattern;
 
 public class ParcelPlugin extends JavaPlugin implements Listener {
     private static final String PRIMARY_COMMAND = "parcel";
+    private static final String STORE_COMMAND = "store";
+    private static final String WEBSTORE_COMMAND = "webstore";
     private static final String ADMIN_PERMISSION = "parcel.admin";
     private static final String PENDING_CONFIRMATIONS_FILE = "pending-confirmations.json";
     private static final String QUEUED_DELIVERIES_FILE = "queued-deliveries.json";
@@ -55,7 +57,9 @@ public class ParcelPlugin extends JavaPlugin implements Listener {
     private PendingConfirmationStore pendingConfirmations;
     private QueuedDeliveryStore queuedDeliveries;
     private volatile ConnectConfig config;
+    private volatile StoreConfig storeConfig;
     private volatile SQWAREApiClient apiClient;
+    private StoreGui storeGui;
     private volatile BukkitTask pollTask;
     private volatile Instant lastSuccessfulHeartbeat;
     private volatile Instant lastSuccessfulQueuePoll;
@@ -84,7 +88,9 @@ public class ParcelPlugin extends JavaPlugin implements Listener {
             return;
         }
 
+        storeGui = new StoreGui(this);
         getServer().getPluginManager().registerEvents(this, this);
+        getServer().getPluginManager().registerEvents(storeGui, this);
         reloadRuntime();
     }
 
@@ -97,6 +103,14 @@ public class ParcelPlugin extends JavaPlugin implements Listener {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (command.getName().equalsIgnoreCase(STORE_COMMAND)) {
+            return handleStoreCommand(sender, label, args);
+        }
+
+        if (command.getName().equalsIgnoreCase(WEBSTORE_COMMAND)) {
+            return handleWebstoreCommand(sender);
+        }
+
         if (!command.getName().equalsIgnoreCase(PRIMARY_COMMAND)) {
             return false;
         }
@@ -131,6 +145,14 @@ public class ParcelPlugin extends JavaPlugin implements Listener {
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        if (command.getName().equalsIgnoreCase(STORE_COMMAND)) {
+            return completeStoreCommand(sender, args);
+        }
+
+        if (command.getName().equalsIgnoreCase(WEBSTORE_COMMAND)) {
+            return Collections.emptyList();
+        }
+
         if (!command.getName().equalsIgnoreCase(PRIMARY_COMMAND) || args.length != 1 || !hasAdminPermission(sender)) {
             return Collections.emptyList();
         }
@@ -152,7 +174,129 @@ public class ParcelPlugin extends JavaPlugin implements Listener {
         return sender.hasPermission(ADMIN_PERMISSION);
     }
 
+    private boolean handleStoreCommand(CommandSender sender, String label, String[] args) {
+        if (args.length > 0 && args[0].equalsIgnoreCase("reload")) {
+            if (!hasAdminPermission(sender)) {
+                sendStoreMessage(sender, "&cNo permission.");
+                return true;
+            }
+
+            reloadConfig();
+            boolean running = reloadRuntime();
+            message(sender, running
+                    ? "&aStore reloaded. &7Polling is active."
+                    : "&aStore reloaded. &7Polling is inactive.");
+            return true;
+        }
+
+        if (!hasStorePermission(sender)) {
+            sendStoreMessage(sender, "&cNo permission.");
+            return true;
+        }
+
+        StoreConfig activeStoreConfig = storeConfig;
+        if (activeStoreConfig == null || !activeStoreConfig.enabled()) {
+            sendStoreMessage(sender, activeStoreConfig == null
+                    ? "&cThe store is currently unavailable."
+                    : activeStoreConfig.disabledMessage());
+            return true;
+        }
+
+        if (args.length > 0
+                && (args[0].equalsIgnoreCase("link")
+                || args[0].equalsIgnoreCase("url")
+                || args[0].equalsIgnoreCase("webstore"))) {
+            storeGui.sendWebstoreLink(sender);
+            return true;
+        }
+
+        if (args.length > 0 && !args[0].equalsIgnoreCase("open")) {
+            message(sender, "Usage: &b/" + label + " [open|link|reload]");
+            return true;
+        }
+
+        if (!(sender instanceof Player)) {
+            sendStoreMessage(sender, activeStoreConfig.playersOnlyMessage());
+            storeGui.sendWebstoreLink(sender);
+            return true;
+        }
+
+        if (storeGui.open((Player) sender)) {
+            return true;
+        }
+
+        storeGui.sendWebstoreLink(sender);
+        return true;
+    }
+
+    private boolean handleWebstoreCommand(CommandSender sender) {
+        if (!hasStorePermission(sender)) {
+            sendStoreMessage(sender, "&cNo permission.");
+            return true;
+        }
+
+        StoreConfig activeStoreConfig = storeConfig;
+        if (activeStoreConfig == null || !activeStoreConfig.enabled()) {
+            sendStoreMessage(sender, activeStoreConfig == null
+                    ? "&cThe store is currently unavailable."
+                    : activeStoreConfig.disabledMessage());
+            return true;
+        }
+
+        storeGui.sendWebstoreLink(sender);
+        return true;
+    }
+
+    private List<String> completeStoreCommand(CommandSender sender, String[] args) {
+        if (args.length != 1) {
+            return Collections.emptyList();
+        }
+
+        List<String> candidates = new ArrayList<>();
+        if (hasStorePermission(sender)) {
+            candidates.add("open");
+            candidates.add("link");
+            candidates.add("webstore");
+        }
+        if (hasAdminPermission(sender)) {
+            candidates.add("reload");
+        }
+        return matching(args[0], candidates);
+    }
+
+    private List<String> matching(String prefix, List<String> candidates) {
+        String normalizedPrefix = prefix.toLowerCase(Locale.ROOT);
+        List<String> matches = new ArrayList<>();
+        for (String candidate : candidates) {
+            if (candidate.startsWith(normalizedPrefix)) {
+                matches.add(candidate);
+            }
+        }
+        return matches;
+    }
+
+    private boolean hasStorePermission(CommandSender sender) {
+        StoreConfig activeStoreConfig = storeConfig;
+        String permission = activeStoreConfig == null ? StoreConfig.DEFAULT_PERMISSION : activeStoreConfig.permission();
+        return isBlank(permission) || sender.hasPermission(permission) || hasAdminPermission(sender);
+    }
+
+    private void sendStoreMessage(CommandSender sender, String fallback) {
+        StoreConfig activeStoreConfig = storeConfig;
+        if (activeStoreConfig != null && fallback.equals("&cNo permission.")) {
+            message(sender, activeStoreConfig.noPermissionMessage());
+            return;
+        }
+        message(sender, fallback);
+    }
+
     private synchronized boolean reloadRuntime() {
+        StoreConfig nextStoreConfig = StoreConfig.from(this, getConfig());
+        storeConfig = nextStoreConfig;
+        if (storeGui != null) {
+            storeGui.reload(nextStoreConfig);
+        }
+
         ConnectConfig nextConfig;
         try {
             nextConfig = ConnectConfig.from(getConfig());
@@ -457,6 +601,7 @@ public class ParcelPlugin extends JavaPlugin implements Listener {
             return new DeliveryConfirmation(delivery.orderId(), false, validationError);
         }
 
+        List<String> renderedCommands = new ArrayList<>(delivery.commands().size());
         for (int index = 0; index < delivery.commands().size(); index++) {
             String command = delivery.commands().get(index);
             String parsedCommand = renderCommand(command, delivery);
@@ -470,13 +615,17 @@ public class ParcelPlugin extends JavaPlugin implements Listener {
                 return new DeliveryConfirmation(delivery.orderId(), false, "Command " + (index + 1) + " contained an invalid control character.");
             }
 
+            renderedCommands.add(parsedCommand);
+        }
+
+        for (int index = 0; index < renderedCommands.size(); index++) {
             if (config != null && config.debug()) {
-                getLogger().info("Executing command " + (index + 1) + "/" + delivery.commands().size()
+                getLogger().info("Executing command " + (index + 1) + "/" + renderedCommands.size()
                         + " for order " + delivery.orderId() + ".");
             }
 
             try {
-                boolean success = Bukkit.dispatchCommand(Bukkit.getConsoleSender(), parsedCommand);
+                boolean success = Bukkit.dispatchCommand(Bukkit.getConsoleSender(), renderedCommands.get(index));
                 if (!success) {
                     return new DeliveryConfirmation(
                             delivery.orderId(),
@@ -705,7 +854,7 @@ public class ParcelPlugin extends JavaPlugin implements Listener {
         }
     }
 
-    private void message(CommandSender sender, String message) {
+    void message(CommandSender sender, String message) {
         sender.sendMessage(ChatColor.translateAlternateColorCodes('&', CHAT_PREFIX + message));
     }
 

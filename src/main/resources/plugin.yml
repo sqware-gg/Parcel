@@ -1,6 +1,7 @@
 name: Parcel
 version: '${project.version}'
 main: com.sqware.parcel.ParcelPlugin
+api-version: '1.13'
 description: Minecraft webstore delivery plugin for SQWARE stores.
 author: SQWARE / Conflict
 website: https://sqware.gg
@@ -8,7 +9,16 @@ commands:
   parcel:
     description: Manage Parcel.
     usage: /parcel <status|reload|poll>
+  store:
+    description: Open the server store menu or show the webstore link.
+    usage: /store [open|link|reload]
+  webstore:
+    description: Show the server webstore link.
+    usage: /webstore
 permissions:
   parcel.admin:
     description: Allows Parcel status and reload commands.
     default: op
+  parcel.store:
+    description: Allows players to open the Parcel store menu and webstore link.
+    default: true

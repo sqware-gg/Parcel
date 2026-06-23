@@ -10,3 +10,62 @@ debug: false
 # When a delivery needs the player online, Parcel queues it locally and
 # executes it this many seconds after the player joins.
 join-delivery-delay-seconds: 2
+
+# Player-facing store commands.
+# /store opens this menu, /store link and /webstore send the configured URL.
+store:
+  enabled: true
+  permission: "parcel.store"
+  webstore-url: "https://sqware.gg"
+  webstore-message:
+    - "&fWebstore: &b{webstore_url}"
+  no-permission-message: "&cNo permission."
+  players-only-message: "&cOnly players can open the store menu."
+  disabled-message: "&cThe store is currently unavailable."
+  not-configured-message: "&cThe webstore URL is not configured."
+  gui:
+    enabled: true
+    title: "&bServer Store"
+    rows: 3
+    fill:
+      enabled: true
+      material: GRAY_STAINED_GLASS_PANE
+      data: 7
+      name: " "
+    items:
+      ranks:
+        slot: 11
+        material: DIAMOND
+        name: "&bRanks"
+        lore:
+          - "&7Browse rank upgrades and"
+          - "&7server support packages."
+          - ""
+          - "&eClick for the store link."
+        actions:
+          - "webstore"
+          - "close"
+      webstore:
+        slot: 13
+        material: EMERALD
+        name: "&bOpen Webstore"
+        lore:
+          - "&7Visit the webstore to view"
+          - "&7available packages."
+          - ""
+          - "&eClick for the link."
+        actions:
+          - "webstore"
+          - "close"
+      support:
+        slot: 15
+        material: BOOK
+        name: "&bPurchase Help"
+        lore:
+          - "&7Purchases are delivered"
+          - "&7automatically after payment."
+          - ""
+          - "&eClick for details."
+        actions:
+          - "message:&7If a purchase does not arrive, contact staff with your order ID."
+          - "close"

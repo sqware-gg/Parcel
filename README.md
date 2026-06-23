@@ -6,7 +6,7 @@
 
 Parcel is the Minecraft webstore delivery plugin for SQWARE stores. It polls the SQWARE delivery API, runs paid package commands from the server console, queues online-only deliveries, and confirms successful delivery back to your store.
 
-Use it for Tebex or Buycraft-style Minecraft store delivery when your server uses SQWARE for ranks, keys, currency, cosmetics, or other paid rewards.
+Use it for Minecraft store delivery when your server uses SQWARE for ranks, keys, currency, cosmetics, or other paid rewards.
 
 ![SQWARE dashboard store page showing packages, revenue, delivery status, Stripe Connect payouts, support links, and Parcel setup.](dashboard-store.png)
 
@@ -18,7 +18,7 @@ Use it for Tebex or Buycraft-style Minecraft store delivery when your server use
 - Delivery polling every 15 seconds.
 - Console command execution through `Bukkit.dispatchCommand`.
 - Durable queueing for deliveries that require the player to be online.
-- `{player}` and `{uuid}` placeholder replacement.
+- `{player}` and `{uuid}` placeholders in delivery commands.
 - Idempotency checks to avoid duplicate command execution.
 - Local confirmation retry storage for temporary API or network failures.
 
